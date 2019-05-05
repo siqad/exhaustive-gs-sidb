@@ -1,0 +1,5 @@
+*result*.xml
+*result*.json
+siqadconn.py
+_siqadconn*.so
+__pycache__/*
