@@ -51,12 +51,22 @@ class ExhaustiveGroundStateSearch:
 
         sq_param = lambda key : self.sqconn.getParameter(key)
 
+        self.num_threads = int(sq_param('num_threads'))
+
         db_scale = 1e-10
         def lat_coord_to_eucl(n, m, l):
             return db_scale * n * self.lat_a, db_scale * (m * self.lat_b + l * self.lat_c)
 
         self.dbs = [lat_coord_to_eucl(db.n, db.m, db.l) for db in self.sqconn.dbCollection()]
         self.dbs = np.asarray(self.dbs)
+
+        auto_fail_threshold = int(sq_param('auto_fail_threshold'))
+        if (auto_fail_threshold > 0 and len(self.dbs) > auto_fail_threshold):
+            raise Exception('Input DB count {} is greater than auto fail '
+                    'threshold {}. If you are sure that you want to run this '
+                    'problem, raise the threshold.'
+                    .format(len(self.dbs), auto_fail_threshold))
+        import pdb; pdb.set_trace()
 
         # retrieve and process simulation parameters
         K_c = 1./(4 * np.pi * float(sq_param('epsilon_r')) * self.eps0)
@@ -86,10 +96,11 @@ class ExhaustiveGroundStateSearch:
         managed_elec_configs = manager.list([])
         managed_cpu_time_list = manager.list([])
 
-        if num_threads < 0:
-            num_threads = mp.cpu_count()
-        if num_threads > max_config_id:
-            num_threads = 1
+        # cml num_threads takes precedent over sqconn param
+        if num_threads == None:
+            num_threads = self.num_threads
+        if num_threads <= 0 or num_threads > max_config_id:
+            num_threads = min(mp.cpu_count(), max_config_id)
         
         configs_per_thread = int(np.ceil(max_config_id / num_threads))
         curr_range = (0, configs_per_thread)
@@ -264,8 +275,8 @@ def parse_cml_args():
     parser.add_argument(dest='out_file', help='Path to the '
             'result file.', metavar='OUT_FILE')
     parser.add_argument('--num-threads', dest='num_threads', type=int, 
-            default=-1, help='Number of threads to run concurrently, leave '
-            'blank to use all threads available.')
+            help='Number of threads to run concurrently, leave blank to use all '
+            'threads available.')
     parser.add_argument('--include-states', dest='include_states', default='ground',
             const='ground', nargs='?', choices=['ground', 'valid', 'all'],
             help='Indicate which states to include - ground for only the ground '

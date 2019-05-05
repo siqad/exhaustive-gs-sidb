@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- 
+Available path/command replacements:
+@INTERP@        : Interpreter command/path (cannot be used in the interpreter field).
+@PYTHON@        : Use a Python interpreter command/path provided by SiQAD (either from the default settings or the user's overriden choice).
+@BINPATH@       : Path to the binary or script path to the engine (cannot be used in the bin_path field).
+@PHYSENGPATH@   : Path to the directory containing this *.physeng file.
+@PROBLEMPATH@   : Path to the problem file describing the simulation problem and parameters.
+@RESULTPATH@    : Path to the result file that will be read by SiQAD after the simulation is complete.
+@JOBTMP@        : Temporary path for this simulation job to store generated files.
+
+These replacements are done on the following fields:
+interpreter, bin_path, command
+-->
+
+<physeng>
+    <name>ExhaustiveGS</name>
+    <version>0.1</version>
+    <description>Exhaustively search for the ground state electron configuration.</description>
+    <!-- Services this plugin provides, used by SimManager and DesignAssistant classes to identify the type of simulation or assistance this plugin can provide. Comma separated, spaces are neither ignored nor truncated. -->
+    <services>ElectronGroundState</services>
+    <!-- Path to the engine script or compiled binary. -->
+    <!--<bin_path>@PHYSENGPATH@/simanneal</bin_path> TODO switch to this form later-->
+    <bin_path>exhaustive_db_ground_state_search.py</bin_path> <!-- path to binary or script, relative to the folder containing engine_description.xml -->
+    <!-- Selection of invocation commands to call this engine. The first one is the one that is shown in SiQAD by default. TODO tie this to presets in some ways. -->
+    <commands>
+        <!-- Default command. -->
+        <command label="Default">
+            <program>@PYTHON@</program>
+            <arg>@BINPATH@</arg>
+            <arg>@PROBLEMPATH@</arg>
+            <arg>@RESULTPATH@</arg>
+        </command>
+    </commands>
+    <!-- Python dependencies file path, relative to the directory containing this physeng file. -->
+    <dep_path></dep_path> 
+    <!-- Simulation parameters, read into SiQAD as a property map. -->
+    <sim_params preserve_order="true">
+        <num_threads>
+            <T>int</T>
+            <val>-1</val>
+            <label>Thread count</label>
+            <tip>The number of concurrent threads to use. If left at -1, all available CPU cores are used.</tip>
+        </num_threads>
+        <epsilon_r>
+            <T>float</T>
+            <val>5.6</val>
+            <dp>2</dp>
+            <label>Relative permittivity</label>
+            <tip>Surface relative permittivity. Original default was 6.35, changed to 5.6 after Huff's fitting in the paper Binary Atomic Silicon Logic on Nature Electronics.</tip>
+        </epsilon_r>
+        <global_v0>
+            <T>float</T>
+            <val>0.25</val>
+            <dp>2</dp>
+            <label>mu (0/- transition level - Fermi level)</label>
+            <tip>The global Fermi level on the surface, higher value brings more electrons to the surface.</tip>
+        </global_v0>
+        <debye_length>
+            <T>float</T>
+            <val>5</val>
+            <label>Debye length (nm)</label>
+            <tip>Debye length for screening.</tip>
+        </debye_length>
+        <auto_fail_threshold>
+            <T>int</T>
+            <val>30</val>
+            <label>Auto-fail DB Count</label>
+            <tip>Refuse to run problems with DB count greater than the specified size as a sanity check against running simulations that would take forever.</tip>
+        </auto_fail_threshold>
+    </sim_params>
+</physeng>
