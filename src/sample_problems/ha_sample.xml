@@ -7,16 +7,11 @@
         <date>2019-04-12 14:34:08</date>
     </program>
     <sim_params>
-        <T_cycle_multiplier>0.9990000128746033</T_cycle_multiplier>
-        <T_init>300</T_init>
-        <T_min>4</T_min>
-        <anneal_cycles>10000</anneal_cycles>
+        <auto_fail_threshold>30</auto_fail_threshold>
         <debye_length>5</debye_length>
         <epsilon_r>5.599999904632568</epsilon_r>
-        <global_v0>0.3199999928474426</global_v0>
+        <global_v0>0.2800000011920929</global_v0>
         <num_threads>-1</num_threads>
-        <preanneal_cycles>0</preanneal_cycles>
-        <result_queue_size>1000</result_queue_size>
     </sim_params>
     <!--GUI Flags-->
     <gui>
