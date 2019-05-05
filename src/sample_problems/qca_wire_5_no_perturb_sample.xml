@@ -10,7 +10,7 @@
         <auto_fail_threshold>30</auto_fail_threshold>
         <debye_length>5</debye_length>
         <epsilon_r>5.599999904632568</epsilon_r>
-        <global_v0>0.2800000011920929</global_v0>
+        <global_v0>0.21</global_v0>
         <num_threads>-1</num_threads>
     </sim_params>
     <!--GUI Flags-->

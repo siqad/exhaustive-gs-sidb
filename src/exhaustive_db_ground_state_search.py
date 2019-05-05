@@ -66,7 +66,6 @@ class ExhaustiveGroundStateSearch:
                     'threshold {}. If you are sure that you want to run this '
                     'problem, raise the threshold.'
                     .format(len(self.dbs), auto_fail_threshold))
-        import pdb; pdb.set_trace()
 
         # retrieve and process simulation parameters
         K_c = 1./(4 * np.pi * float(sq_param('epsilon_r')) * self.eps0)
