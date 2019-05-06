@@ -86,8 +86,18 @@ class ExhaustiveGroundStateSearch:
         self.v_ext = np.zeros(len(self.dbs))  # TODO add support for ext potential
         #self.v_local = np.ones(len(self.dbs)) * -1 * float(sq_param('global_v0'))
 
-    def ground_state_search_mt(self, num_threads, include_states, use_qubo_obj_func=False):
-        '''Search for the ground state using multiple threads.'''
+    def ground_state_search_mt(self, num_threads, stability_checks='all',
+            include_states='ground', use_qubo_obj_func=False):
+        '''
+        Search for the ground state using multiple threads.
+
+        Args:
+            num_threads:        Number of threads to spawn.
+            stability_checks:   Options 'population_only' or 'all'.
+            include_states:     Options 'ground', 'valid' or 'all'.
+            use_qubo_obj_func:  Set to true to use QUBO objective function as 
+                                the energy output.
+        '''
 
         max_config_id = 2**len(self.dbs)
 
@@ -109,7 +119,8 @@ class ExhaustiveGroundStateSearch:
         while curr_range[1] <= max_config_id and curr_range[0] != curr_range[1]:
             th = SearchThread(managed_elec_configs, managed_cpu_time_list, 
                     thread_id, curr_range, self.dbs, self.v_ij, self.mu, 
-                    include_states, use_qubo_obj_func, self.verbose)
+                    stability_checks, include_states, use_qubo_obj_func, 
+                    self.verbose)
             p = mp.Process(target=th.run)
             threads.append(th)
             processes.append(p)
@@ -154,10 +165,8 @@ class ExhaustiveGroundStateSearch:
         # charge configurations
         charge_configs = []
         for elec_config in self.elec_configs:
-            charge_configs.append([elec_config.config,
-                str(elec_config.energy),
-                str(1),
-                str(int(elec_config.validity))])
+            charge_configs.append([elec_config.config, str(elec_config.energy),
+                str(1), str(int(elec_config.validity))])
         self.sqconn.export(db_charge=charge_configs)
 
         # timing information
@@ -168,8 +177,8 @@ class SearchThread:
     '''A single search thread.'''
 
     def __init__(self, managed_config_results, managed_time_list, t_id, 
-            search_range, dbs, v_ij, mu, include_states, use_qubo_obj_func, 
-            verbose):
+            search_range, dbs, v_ij, mu, stability_checks, include_states, 
+            use_qubo_obj_func, verbose):
         '''search_range is a tuple containing the start and end indices.'''
         self.managed_config_results = managed_config_results
         self.managed_time_list = managed_time_list
@@ -179,6 +188,7 @@ class SearchThread:
         self.v_ij = v_ij
         self.mu = mu
         self.mus = mu * np.ones(len(dbs))
+        self.stability_checks = stability_checks
         self.include_states = include_states
         self.verbose = verbose
         self.use_qubo_obj_func = use_qubo_obj_func
@@ -242,6 +252,10 @@ class SearchThread:
                             .format(charges, i, v_i))
                 return False
 
+        # don't need to check configuration stability if not asked to
+        if self.stability_checks == 'population_only':
+            return True
+
         # locally minimal
         for i in range(len(charges)):
             if charges[i] != 1:
@@ -276,6 +290,10 @@ def parse_cml_args():
     parser.add_argument('--num-threads', dest='num_threads', type=int, 
             help='Number of threads to run concurrently, leave blank to use all '
             'threads available.')
+    parser.add_argument('--stability-checks', dest='stability_checks',
+            default='all', const='all', nargs='?', 
+            choices=['population_only', 'all'],
+            help='Indicate which stability checks to perform.')
     parser.add_argument('--include-states', dest='include_states', default='ground',
             const='ground', nargs='?', choices=['ground', 'valid', 'all'],
             help='Indicate which states to include - ground for only the ground '
@@ -292,8 +310,8 @@ if __name__ == '__main__':
     egss = ExhaustiveGroundStateSearch(cml_args.in_file, cml_args.out_file, 
             verbose=cml_args.verbose)
     print('Performing exhaustive search...')
-    egss.ground_state_search_mt(cml_args.num_threads, cml_args.include_states, 
-            cml_args.use_qubo_obj_func)
+    egss.ground_state_search_mt(cml_args.num_threads, cml_args.stability_checks,
+            cml_args.include_states, cml_args.use_qubo_obj_func)
     print('Exporting results...')
     egss.export_results(cml_args.export_json)
     print('Finished')
