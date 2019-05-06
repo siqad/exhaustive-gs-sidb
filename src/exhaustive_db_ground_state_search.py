@@ -23,6 +23,12 @@ import time
 
 ElectronConfig = namedtuple('ElectronConfig', ['config', 'energy', 'validity'])
 
+dp = 10
+zero_diff = 10**(-dp)
+equal = lambda a, b: abs(a - b) < zero_diff
+less_than = lambda a, b: (b - a) > zero_diff
+ffmt = lambda x: f'{x:.{dp}f}'
+
 class ExhaustiveGroundStateSearch:
     '''Exhaustively find the ground state configuration of the given DB layout.
     '''
@@ -137,11 +143,11 @@ class ExhaustiveGroundStateSearch:
         # find the actual ground states among the returned states
         gs_energy = float('inf')
         for elec_config in managed_elec_configs:
-            if elec_config.energy < gs_energy:
+            if less_than(elec_config.energy, gs_energy):
                 self.elec_configs.clear()
                 self.elec_configs.append(elec_config)
                 gs_energy = elec_config.energy
-            elif elec_config.energy == gs_energy:
+            elif equal(elec_config.energy, gs_energy):
                 self.elec_configs.append(elec_config)
 
         self.cpu_time = np.sum(managed_cpu_time_list)
@@ -165,7 +171,7 @@ class ExhaustiveGroundStateSearch:
         # charge configurations
         charge_configs = []
         for elec_config in self.elec_configs:
-            charge_configs.append([elec_config.config, str(elec_config.energy),
+            charge_configs.append([elec_config.config, ffmt(elec_config.energy),
                 str(1), str(int(elec_config.validity))])
         self.sqconn.export(db_charge=charge_configs)
 
@@ -175,6 +181,7 @@ class ExhaustiveGroundStateSearch:
 
 class SearchThread:
     '''A single search thread.'''
+
 
     def __init__(self, managed_config_results, managed_time_list, t_id, 
             search_range, dbs, v_ij, mu, stability_checks, include_states, 
@@ -204,11 +211,14 @@ class SearchThread:
             if (self.include_states != 'ground' or validity):
                 energy = self.objective_function(config_str) if self.use_qubo_obj_func \
                         else self.system_energy(config_str)
-                if (validity and energy < gs_energy):
+
+                #if (validity and energy < gs_energy):
+                if (validity and less_than(energy, gs_energy)):
                     gs_configs_str.clear()
                     gs_configs_str.append(config_str)
                     gs_energy = energy
-                elif (validity and energy == gs_energy):
+                #elif (validity and energy == gs_energy):
+                elif (validity and equal(energy, gs_energy)):
                     gs_configs_str.append(config_str)
 
                 if (self.include_states == 'all') or (self.include_states == 'valid' and validity):
