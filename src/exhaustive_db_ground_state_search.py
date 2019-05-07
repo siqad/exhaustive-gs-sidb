@@ -239,7 +239,7 @@ class SearchThread:
         interactions.'''
 
         charges = np.asarray([int(c) for c in charge_config])
-        return np.inner(charges, self.mus) + 0.5 * np.inner(charges, np.dot(self.v_ij, charges))
+        return -np.inner(charges, self.mus) + 0.5 * np.inner(charges, np.dot(self.v_ij, charges))
 
     def system_energy(self, charge_config):
         '''Return the system energy of the given charge configuration 
