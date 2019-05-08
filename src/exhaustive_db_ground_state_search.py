@@ -23,10 +23,11 @@ import time
 
 ElectronConfig = namedtuple('ElectronConfig', ['config', 'energy', 'validity'])
 
-dp = 10
+dp = 6
 zero_diff = 10**(-dp)
 equal = lambda a, b: abs(a - b) < zero_diff
 less_than = lambda a, b: (b - a) > zero_diff
+greater_than = lambda a, b: (a - b) > zero_diff
 ffmt = lambda x: f'{x:.{dp}f}'
 
 class ExhaustiveGroundStateSearch:
@@ -255,8 +256,8 @@ class SearchThread:
         # population stable
         v_local = -np.dot(self.v_ij, charges) # TODO v_ext
         for i in range(len(v_local)):
-            if (charges[i] == 1 and v_local[i] + self.mu < 0) or \
-                    (charges[i] == 0 and v_local[i] + self.mu > 0):
+            if (charges[i] == 1 and less_than(v_local[i] + self.mu, 0)) or \
+                    (charges[i] == 0 and greater_than(v_local[i] + self.mu, 0)):
                 if self.verbose:
                     print('Config {} population unstable, failed at index {} with v_i={}'
                             .format(charges, i, v_i))
@@ -273,7 +274,7 @@ class SearchThread:
             for j in range(len(charges)):
                 if i == j or charges[j] != 0:
                     continue
-                if self.hop_energy_delta(charges, v_local, i, j) < 0:
+                if less_than(self.hop_energy_delta(charges, v_local, i, j), 0):
                     if self.verbose:
                         print('Charge {} charge state unstable, failed when hopping '
                                 'from site {} to {}'.format(charge_config, i,j))
