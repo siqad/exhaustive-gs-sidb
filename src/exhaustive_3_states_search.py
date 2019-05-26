@@ -36,9 +36,6 @@ class ChargeConfig:
     Registers representing a charge configuration, can be 2 or 3 states.
     '''
 
-    dbs = None      # list of DB locations in (x, y) angstrom coordinates
-    v_ij = None     # precalculated V_ijs
-
     # constants
     q0 = 1.602e-19
     eps0 = 8.854e-12
@@ -73,7 +70,6 @@ class ChargeConfig:
                 elif r == 2:
                     self.db_states[db_ind] = 1
                 db_ind -= 1
-        print(f'start state is {self.db_states}')
 
         # TODO add offset functionality probably through modulus
         self.curr_ind = start_ind
@@ -81,8 +77,7 @@ class ChargeConfig:
 
         self.verbose = verbose
 
-        if self.dbs == None:
-            self.perform_precalculations(dbs, mu, epsilon_r, debye_length)
+        self.perform_precalculations(dbs, mu, epsilon_r, debye_length)
 
     def perform_precalculations(self, dbs, mu, epsilon_r, debye_length):
         '''
@@ -140,15 +135,6 @@ class ChargeConfig:
         self.v_i_ready = False
 
         return True
-
-    def has_next(self):
-        '''
-        Check whether there is a next state without actually advancing there.
-
-        Returns:
-            A bool indicating whether there is a next state.
-        '''
-        return self.curr_ind + 1 < self.end_ind
 
     def system_energy(self, use_qubo=False):
         '''
@@ -348,7 +334,7 @@ class ExhaustiveGroundStateSearch:
         charge_configs = []
         for elec_config in self.elec_configs:
             charge_configs.append([config_to_str(elec_config.config), 
-                ffmt(elec_config.energy), str(1), str(int(elec_config.validity))])
+                ffmt(elec_config.energy), str(1), str(int(elec_config.validity)), str(3)])
         self.sqconn.export(db_charge=charge_configs)
 
         # timing information
@@ -379,7 +365,7 @@ class SearchThreadThreeStates:
         gs_configs = []
         gs_energy = float('inf')
 
-        has_next = self.config.has_next()
+        has_next = True
         while has_next:
             valid = self.config.physically_valid()
             if valid:
@@ -392,9 +378,9 @@ class SearchThreadThreeStates:
                     gs_configs.append(self.config.db_states.copy())
 
             has_next = self.config.advance()
-        print(f'Last state: {self.config.db_states}')
 
-        print(f'Found ground states: {gs_configs}')
+        if self.verbose:
+            print(f'Found ground states: {gs_configs}')
 
         elec_configs = []
         for gs_config in gs_configs:

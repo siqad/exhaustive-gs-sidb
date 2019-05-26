@@ -22,7 +22,7 @@ interpreter, bin_path, command
     <services>ElectronGroundState</services>
     <!-- Path to the engine script or compiled binary. -->
     <!--<bin_path>@PHYSENGPATH@/simanneal</bin_path> TODO switch to this form later-->
-    <bin_path>exhaustive_db_ground_state_search.py</bin_path> <!-- path to binary or script, relative to the folder containing engine_description.xml -->
+    <bin_path>exhaustive_3_states_search.py</bin_path> <!-- path to binary or script, relative to the folder containing engine_description.xml -->
     <!-- Selection of invocation commands to call this engine. The first one is the one that is shown in SiQAD by default. TODO tie this to presets in some ways. -->
     <commands>
         <!-- Default command. -->
