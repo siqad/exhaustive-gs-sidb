@@ -155,7 +155,7 @@ class ChargeConfig:
                 if self.v_i[i] == -float('inf'):
                     self._calc_v_i(i)
             self.v_i_ready = True
-        return np.inner(self.db_states, self.v_i)
+        return 0.5 * np.inner(self.db_states, self.v_i)
 
     def physically_valid(self):
         '''
