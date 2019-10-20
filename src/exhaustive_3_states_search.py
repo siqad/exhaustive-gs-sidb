@@ -15,7 +15,6 @@ from collections import namedtuple
 import numpy as np
 from scipy.spatial import distance
 import argparse
-#from tqdm import tqdm
 import siqadconn
 import itertools
 import multiprocessing as mp
