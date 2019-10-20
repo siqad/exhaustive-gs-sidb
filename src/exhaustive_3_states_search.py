@@ -57,14 +57,15 @@ class ChargeConfig:
             debye_length:   Thomas-Fermi Debye length.
         '''
         assert(start_ind >= 0 and start_ind < end_ind)
+        assert(state_count == 2 or state_count == 3)
 
-        self.state_max = 1 if state_count == 3 else 0   # max pos charge state (0 or 1)
+        self.state_max = state_count - 2
         self.db_states = np.full(len(dbs), -1)          # -1, 0, 1 for DB-, DB0, and DB+
         if start_ind != 0:
             n = start_ind
             db_ind = len(dbs)-1
             while n:
-                n, r = divmod(n, 3)
+                n, r = divmod(n, state_count)
                 if r == 1:
                     self.db_states[db_ind] = 0
                 elif r == 2:
@@ -234,7 +235,7 @@ class ExhaustiveGroundStateSearch:
                 self.in_file.name, self.out_file)
 
     def ground_state_search_3_states(self, num_threads, stability_checks='all',
-            include_states='ground', use_qubo_obj_func=False):
+            include_states='ground', use_qubo_obj_func=False, two_state=False):
         '''
         Search for the ground state using multiple threads.
 
@@ -263,7 +264,8 @@ class ExhaustiveGroundStateSearch:
         v_ext = np.zeros(len(dbs)) # TODO implement
 
         # prepare threads
-        max_config_id = 3**len(dbs)
+        base = 3 if not two_state else 2
+        max_config_id = base**len(dbs)
         if num_threads == None:
             num_threads = int(sq_param('num_threads'))
         if num_threads <= 0 or num_threads > max_config_id:
@@ -276,7 +278,7 @@ class ExhaustiveGroundStateSearch:
         while curr_range[1] <= max_config_id and curr_range[0] != curr_range[1]:
             th = SearchThreadThreeStates(managed_elec_configs, managed_cpu_time_list, 
                     thread_id, curr_range, dbs, mu, epsilon_r, debye_length,
-                    use_qubo_obj_func, self.verbose)
+                    use_qubo_obj_func, base, self.verbose)
             p = mp.Process(target=th.run)
             threads.append(th)
             processes.append(p)
@@ -347,16 +349,17 @@ class SearchThreadThreeStates:
 
     def __init__(self, managed_config_results, managed_time_list, t_id, 
             search_range, dbs, mu, epsilon_r, debye_length, use_qubo_obj_func, 
-            verbose):
+            states, verbose):
         '''search_range is a tuple containing the start and end indices.'''
         self.managed_config_results = managed_config_results
         self.managed_time_list = managed_time_list
         self.thread_id = t_id
         self.dbs = dbs
+        self.states = states
         self.verbose = verbose
         self.use_qubo_obj_func = use_qubo_obj_func
 
-        self.config = ChargeConfig(3, self.dbs, search_range[0],
+        self.config = ChargeConfig(states, self.dbs, search_range[0],
                 search_range[1], mu, epsilon_r, debye_length, verbose)
 
     def run(self):
@@ -410,8 +413,10 @@ def parse_cml_args():
             const='ground', nargs='?', choices=['ground', 'valid', 'all'],
             help='Indicate which states to include - ground for only the ground '
             'state, valid for all the valid states, all for everything.')
-    parser.add_argument('--use-qubo-obj-func', action='store_true',
-            dest='use_qubo_obj_func')
+    # QUBO has not been fully implemented yet
+    #parser.add_argument('--use-qubo-obj-func', action='store_true',
+    #        dest='use_qubo_obj_func')
+    parser.add_argument('--two-state', action='store_true', dest='two_state')
     parser.add_argument('--export-json', action='store_true', dest='export_json')
     parser.add_argument('--verbose', action='store_true', dest='verbose')
     return parser.parse_args()
@@ -423,7 +428,7 @@ if __name__ == '__main__':
             verbose=cml_args.verbose)
     print('Performing exhaustive search...')
     egss.ground_state_search_3_states(cml_args.num_threads, cml_args.stability_checks,
-            cml_args.include_states, cml_args.use_qubo_obj_func)
+            cml_args.include_states, cml_args.use_qubo_obj_func, cml_args.two_state)
     print('Exporting results...')
     egss.export_results(cml_args.export_json)
     print('Finished')
