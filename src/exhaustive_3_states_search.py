@@ -413,8 +413,8 @@ def parse_cml_args():
             help='Indicate which states to include - ground for only the ground '
             'state, valid for all the valid states, all for everything.')
     # QUBO has not been fully implemented yet
-    #parser.add_argument('--use-qubo-obj-func', action='store_true',
-    #        dest='use_qubo_obj_func')
+    parser.add_argument('--use-qubo-obj-func', action='store_true',
+            dest='use_qubo_obj_func', help='NOT IMPLEMENTED YET.')
     parser.add_argument('--two-state', action='store_true', dest='two_state')
     parser.add_argument('--export-json', action='store_true', dest='export_json')
     parser.add_argument('--verbose', action='store_true', dest='verbose')
