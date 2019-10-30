@@ -40,40 +40,53 @@ class ChargeConfig:
     eps0 = 8.854e-12
     k_b = 8.617e-5
 
-    def __init__(self, state_count, dbs, start_ind, end_ind, mu, epsilon_r, 
-            debye_length, verbose):
+    def __init__(self, state_count, dbs, mu, epsilon_r, debye_length, 
+            config_list=[], start_ind=-1, end_ind=-1, verbose=False):
         '''
         Args:
             state_count:    Number of states (2 for DB- and DB0, 3 to also 
                             include DB+).
             dbs:            List of DB locations in Euclidean coordinates in
                             angstrom.
-            start_ind:      Offset from the beginning.
-            end_ind:        Ending index (exclusive).
             mu:             Potential between Fermi level and (0/-) charge 
                             transition level.
             epsilon_r:      Relative permittivity.
             debye_length:   Thomas-Fermi Debye length.
+            config_list:    List of configs to run, if this is present then 
+                            start_ind and end_ind will be ignored.
+            start_ind:      Offset from the beginning.
+            end_ind:        Ending index (exclusive).
         '''
-        assert(start_ind >= 0 and start_ind < end_ind)
-        assert(state_count == 2 or state_count == 3)
+        if not config_list and (start_ind < 0 or start_ind >= end_ind):
+            raise ValueError('Either config_list, or a valid start_ind, end_ind'
+                    ' combination must be provided.')
+        if state_count not in [2,3]:
+            raise ValueError('Only support 2 or 3 state computation, '
+                    f'{state_count} requested.')
 
         self.state_max = state_count - 2
         self.db_states = np.full(len(dbs), -1)          # -1, 0, 1 for DB-, DB0, and DB+
-        if start_ind != 0:
-            n = start_ind
-            db_ind = len(dbs)-1
-            while n:
-                n, r = divmod(n, state_count)
-                if r == 1:
-                    self.db_states[db_ind] = 0
-                elif r == 2:
-                    self.db_states[db_ind] = 1
-                db_ind -= 1
 
-        # TODO add offset functionality probably through modulus
-        self.curr_ind = start_ind
-        self.end_ind = min(end_ind, 3**len(dbs))
+        self.config_list = config_list if config_list else None
+        if config_list:
+            self.curr_ind = 0
+            self.end_ind = len(self.config_list)
+            self.db_states = self.config_list[0]
+        else:
+            if start_ind != 0:
+                n = start_ind
+                db_ind = len(dbs)-1
+                while n:
+                    n, r = divmod(n, state_count)
+                    if r == 1:
+                        self.db_states[db_ind] = 0
+                    elif r == 2:
+                        self.db_states[db_ind] = 1
+                    db_ind -= 1
+
+            # TODO add offset functionality probably through modulus
+            self.curr_ind = start_ind
+            self.end_ind = min(end_ind, 3**len(dbs))
 
         self.verbose = verbose
 
@@ -118,18 +131,21 @@ class ChargeConfig:
         if self.curr_ind >= self.end_ind:
             return False
 
-        charge_ind = len(self.db_states) - 1
-        carry = 1
-        while charge_ind >= 0 and carry > 0:
-            if self.db_states[charge_ind] != self.state_max:
-                # increment charge
-                carry = 0
-                self.db_states[charge_ind] += 1
-            else:
-                # reset charge and add carry
-                carry = 1
-                self.db_states[charge_ind] = -1
-            charge_ind -= 1
+        if self.config_list:
+            self.db_states = self.config_list[self.curr_ind]
+        else:
+            charge_ind = len(self.db_states) - 1
+            carry = 1
+            while charge_ind >= 0 and carry > 0:
+                if self.db_states[charge_ind] != self.state_max:
+                    # increment charge
+                    carry = 0
+                    self.db_states[charge_ind] += 1
+                else:
+                    # reset charge and add carry
+                    carry = 1
+                    self.db_states[charge_ind] = -1
+                charge_ind -= 1
 
         self.v_i[:] = -float('inf')
         self.v_i_ready = False
@@ -234,7 +250,8 @@ class ExhaustiveGroundStateSearch:
                 self.in_file.name, self.out_file)
 
     def ground_state_search_3_states(self, num_threads, stability_checks='all',
-            include_states='ground', use_qubo_obj_func=False, two_state=False):
+            include_states='ground', check_config=False, use_qubo_obj_func=False, 
+            two_state=False):
         '''
         Search for the ground state using multiple threads.
 
@@ -242,8 +259,10 @@ class ExhaustiveGroundStateSearch:
             num_threads:        Number of threads to spawn.
             stability_checks:   Options 'population_only' or 'all'.
             include_states:     Options 'ground', 'valid' or 'all'.
+            check_config:       See argument help for --check-config.
             use_qubo_obj_func:  Set to true to use QUBO objective function as 
                                 the energy output.
+            two_state:          Run in two-state mode.
         '''
 
         db_scale = 1e-10    # ang to m
@@ -255,53 +274,94 @@ class ExhaustiveGroundStateSearch:
         managed_cpu_time_list = manager.list([])
 
         # retrieve sim info
-        dbs = np.asarray([lat_coord_to_eucl(db.n, db.m, db.l) \
+        self.dbs = np.asarray([lat_coord_to_eucl(db.n, db.m, db.l) \
                 for db in self.sqconn.dbCollection()])
-        epsilon_r = float(sq_param('epsilon_r'))
-        debye_length = float(sq_param('debye_length')) * 1e-9
-        mu = float(sq_param('global_v0'))
-        v_ext = np.zeros(len(dbs)) # TODO implement
+        self.epsilon_r = float(sq_param('epsilon_r'))
+        self.debye_length = float(sq_param('debye_length')) * 1e-9
+        self.mu = float(sq_param('global_v0'))
+        v_ext = np.zeros(len(self.dbs)) # TODO implement
 
-        # prepare threads
-        base = 3 if not two_state else 2
-        max_config_id = base**len(dbs)
-        if num_threads == None:
-            num_threads = int(sq_param('num_threads'))
-        if num_threads <= 0 or num_threads > max_config_id:
-            num_threads = min(mp.cpu_count(), max_config_id)
-        configs_per_thread = int(np.ceil(max_config_id / num_threads))
-        curr_range = (0, configs_per_thread)
-        threads = []
-        processes = []
-        thread_id = 0
-        while curr_range[1] <= max_config_id and curr_range[0] != curr_range[1]:
-            th = SearchThreadThreeStates(managed_elec_configs, managed_cpu_time_list, 
-                    thread_id, curr_range, dbs, mu, epsilon_r, debye_length,
-                    use_qubo_obj_func, base, self.verbose)
-            p = mp.Process(target=th.run)
-            threads.append(th)
-            processes.append(p)
-            curr_range = curr_range[1], min(curr_range[1]+configs_per_thread, max_config_id)
-            thread_id += 1
+        self.base = 3 if not two_state else 2
 
-        wall_time_start = time.time()
+        run_egs = self.check_config_validity() if check_config else True
 
-        [p.start() for p in processes]
-        [p.join() for p in processes]
+        if run_egs:
+            self.time_keeping = True
+            max_config_id = self.base**len(self.dbs)
+            # prepare threads
+            if num_threads == None:
+                num_threads = int(sq_param('num_threads'))
+            if num_threads <= 0 or num_threads > max_config_id:
+                num_threads = min(mp.cpu_count(), max_config_id)
+            configs_per_thread = int(np.ceil(max_config_id / num_threads))
+            curr_range = (0, configs_per_thread)
+            threads = []
+            processes = []
+            thread_id = 0
+            while curr_range[1] <= max_config_id and curr_range[0] != curr_range[1]:
+                th = SearchThreadThreeStates(managed_elec_configs, managed_cpu_time_list, 
+                        thread_id, curr_range, self.dbs, self.mu, self.epsilon_r, 
+                        self.debye_length, use_qubo_obj_func, self.base, self.verbose)
+                p = mp.Process(target=th.run)
+                threads.append(th)
+                processes.append(p)
+                curr_range = curr_range[1], min(curr_range[1]+configs_per_thread, max_config_id)
+                thread_id += 1
 
-        self.wall_time_elapsed = time.time() - wall_time_start
+            wall_time_start = time.time()
 
-        # find the actual ground states among the returned states
-        gs_energy = float('inf')
-        for elec_config in managed_elec_configs:
-            if less_than(elec_config.energy, gs_energy):
-                self.elec_configs.clear()
-                self.elec_configs.append(elec_config)
-                gs_energy = elec_config.energy
-            elif equal(elec_config.energy, gs_energy):
-                self.elec_configs.append(elec_config)
+            [p.start() for p in processes]
+            [p.join() for p in processes]
 
-        self.cpu_time = np.sum(managed_cpu_time_list)
+            self.wall_time_elapsed = time.time() - wall_time_start
+
+            # find the actual ground states among the returned states
+            gs_energy = float('inf')
+            for elec_config in managed_elec_configs:
+                if less_than(elec_config.energy, gs_energy):
+                    self.elec_configs.clear()
+                    self.elec_configs.append(elec_config)
+                    gs_energy = elec_config.energy
+                elif equal(elec_config.energy, gs_energy):
+                    self.elec_configs.append(elec_config)
+            self.cpu_time = np.sum(managed_cpu_time_list)
+        else:
+            self.time_keeping = False
+
+
+    def check_config_validity(self):
+        import lxml.etree as ET
+        et = ET.parse(self.in_file)
+        accepted_gs = []
+
+        def db_c_to_int(c:str):
+            if c == '-':
+                return -1
+            elif c == '+':
+                return 1
+            else:
+                return 0
+
+        for gs_config_node in et.iter('gs_config'):
+            accepted_gs.append([db_c_to_int(c) for c in gs_config_node.text])
+
+        if len(accepted_gs) == 0:
+            raise ValueError('There must be more than one ground state config '
+                    'in the simulation problem template. They should be inside '
+                    'an <accepted_gs> element with each config enclosed by '
+                    '<gs_config>.')
+
+        config = ChargeConfig(self.base, self.dbs, self.mu, self.epsilon_r,
+                self.debye_length, config_list=accepted_gs, verbose=True)
+
+        has_valid_config = False
+        has_next = True
+        while has_next:
+            has_valid_config = has_valid_config or config.physically_valid()
+            has_next = config.advance()
+
+        print(f'Found ground state in provided list: {has_valid_config}')
+        return has_valid_config
 
     def export_results(self, export_json=False):
         '''Export the results sorted by the energy given by the objective
@@ -339,8 +399,9 @@ class ExhaustiveGroundStateSearch:
         self.sqconn.export(db_charge=charge_configs)
 
         # timing information
-        self.sqconn.export(misc=[['time_s_cpu_time', self.cpu_time],
-                                 ['time_s_wall_time', self.wall_time_elapsed]])
+        if self.time_keeping:
+            self.sqconn.export(misc=[['time_s_cpu_time', self.cpu_time],
+                ['time_s_wall_time', self.wall_time_elapsed]])
 
 
 class SearchThreadThreeStates:
@@ -358,8 +419,9 @@ class SearchThreadThreeStates:
         self.verbose = verbose
         self.use_qubo_obj_func = use_qubo_obj_func
 
-        self.config = ChargeConfig(states, self.dbs, search_range[0],
-                search_range[1], mu, epsilon_r, debye_length, verbose)
+        self.config = ChargeConfig(states, self.dbs, mu, epsilon_r, debye_length,
+                start_ind=search_range[0], end_ind=search_range[1],
+                verbose=verbose)
 
     def run(self):
         time_start = time.process_time()
@@ -412,6 +474,13 @@ def parse_cml_args():
             const='ground', nargs='?', choices=['ground', 'valid', 'all'],
             help='Indicate which states to include - ground for only the ground '
             'state, valid for all the valid states, all for everything.')
+    parser.add_argument('--check-config', action='store_true', 
+            dest='check_config', help='Check whether any of the configs given '
+            'in accepted_gs->gs_config are ground states. If the configs are '
+            'not stable, the script ends without returning any ground states; '
+            'if the configs are all stable, the script does an exhaustive check'
+            ' and returns the ground state that is found. This mode is intended'
+            ' to speed up parameter sweeping tests.')
     # QUBO has not been fully implemented yet
     parser.add_argument('--use-qubo-obj-func', action='store_true',
             dest='use_qubo_obj_func', help='NOT IMPLEMENTED YET.')
@@ -426,8 +495,10 @@ if __name__ == '__main__':
     egss = ExhaustiveGroundStateSearch(cml_args.in_file, cml_args.out_file, 
             verbose=cml_args.verbose)
     print('Performing exhaustive search...')
-    egss.ground_state_search_3_states(cml_args.num_threads, cml_args.stability_checks,
-            cml_args.include_states, cml_args.use_qubo_obj_func, cml_args.two_state)
+    egss.ground_state_search_3_states(cml_args.num_threads, 
+            cml_args.stability_checks, cml_args.include_states, 
+            cml_args.check_config, cml_args.use_qubo_obj_func, 
+            cml_args.two_state)
     print('Exporting results...')
     egss.export_results(cml_args.export_json)
     print('Finished')
