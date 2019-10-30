@@ -367,11 +367,7 @@ class ExhaustiveGroundStateSearch:
         '''Export the results sorted by the energy given by the objective
         function.'''
         import json
-
-        if export_json:
-            with open('result.json', 'w') as outfile:
-                #json.dump(sorted(self.elec_configs, key=lambda config: config.energy), outfile)
-                json.dump(self.elec_configs, outfile)
+        import os
 
         # DB locations
         dblocs = []
@@ -397,6 +393,10 @@ class ExhaustiveGroundStateSearch:
             charge_configs.append([config_to_str(elec_config.config), 
                 ffmt(elec_config.energy), str(1), str(int(elec_config.validity)), str(3)])
         self.sqconn.export(db_charge=charge_configs)
+
+        if export_json:
+            with open(os.path.splitext(self.out_file)[0]+'.json', 'w') as outfile:
+                json.dump(charge_configs, outfile)
 
         # timing information
         if self.time_keeping:
