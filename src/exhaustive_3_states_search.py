@@ -207,7 +207,7 @@ class ChargeConfig:
             # Attempt hops from more negative charge states to more positive ones
             for j in range(len(self.dbs)):
                 if (self.db_states[j] > self.db_states[i]) \
-                        and (less_than(self._hop_energy_delta(i, j), 0)):
+                        and self._hop_energy_delta(i, j) < - zero_diff:
                     if self.verbose:
                         print(f'Config {self.db_states} charge state '
                                 f'unstable, failed when hopping from site '
