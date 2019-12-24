@@ -77,30 +77,31 @@ class ChargeConfig:
 
         self.verbose = verbose
 
-        self.perform_precalculations(dbs, mu, epsilon_r, debye_length)
+        # retrieve and process simulation parameters
+        self.K_c = 1./(4 * np.pi * epsilon_r * self.eps0)
+        self.eta = 0.59                         # TODO make configurable
+        self.muzm = mu
+        self.mupz = mu - self.eta
+        self.debye_length = debye_length
 
-    def perform_precalculations(self, dbs, mu, epsilon_r, debye_length):
+        self.perform_precalculations(dbs)
+
+    def perform_precalculations(self, dbs):
         '''
         Perform precalculations.
         '''
 
         self.dbs = np.asarray(dbs)
-        
-        # retrieve and process simulation parameters
-        K_c = 1./(4 * np.pi * epsilon_r * self.eps0)
 
         # precompute distances and inter-DB potentials
         db_r = distance.cdist(self.dbs, self.dbs, 'euclidean')
         self.neighbor_rank = np.delete(np.argsort(db_r), 0, 1) # first column is always self index
-        self.v_ij = np.divide(self.q0 * K_c * np.exp(-db_r/debye_length), 
+        self.v_ij = np.divide(self.q0 * self.K_c * np.exp(-db_r/self.debye_length), 
                 db_r, out=np.zeros_like(db_r), where=db_r!=0)
         if self.verbose:
             print('v_ij=\n{}'.format(self.v_ij))
 
         # local potentials
-        self.mu = mu
-        self.mus = np.ones(len(self.dbs)) * self.mu * -1
-        self.eta = 0.59                         # TODO make configurable
         self.v_ext = np.zeros(len(self.dbs))    # TODO add support for ext potential
         self.v_i = np.full(len(self.dbs), -float('inf'))    # Overwritten over each advance
         self.v_i_ready = False
@@ -155,7 +156,7 @@ class ChargeConfig:
                 if self.v_i[i] == -float('inf'):
                     self._calc_v_i(i)
             self.v_i_ready = True
-        return 0.5 * np.inner(self.db_states, self.v_i)
+        return np.inner(self.v_ext, self.db_states) + 0.5 * np.inner(self.db_states, self.v_i)
 
     def physically_valid(self):
         '''
@@ -169,17 +170,16 @@ class ChargeConfig:
         # population stability and calculate v_i as needed
         for i in range(len(self.dbs)):
             self._calc_v_i(i)
-            valid = (self.db_states[i] == 1  and less_than(self.v_i[i] + self.mu + self.eta, 0)) or \
-                    (self.db_states[i] == -1 and greater_than(self.v_i[i] + self.mu, 0)) or \
-                    (self.db_states[i] == 0  and less_than(self.v_i[i] + self.mu, 0) \
-                                             and greater_than(self.v_i[i] + self.mu + self.eta, 0))
+            valid = (self.db_states[i] == -1 and less_than(self.v_i[i] + self.muzm, 0)) or \
+                    (self.db_states[i] == 1  and greater_than(self.v_i[i] + self.mupz, 0)) or \
+                    (self.db_states[i] == 0  and greater_than(self.v_i[i] + self.muzm, 0) \
+                                             and less_than(self.v_i[i] + self.mupz, 0))
             if not valid:
                 if self.verbose:
                     print(f'Config {self.db_states} population unstable, failed at '
-                            f'index {i} with v_i={self.v_i[i]}, mu={self.mu}, '
+                            f'index {i} with v_i={self.v_i[i]}, muzm={self.muzm}, '
                             f'eta={self.eta}')
                 return False
-
         self.v_i_ready = True
 
         # configuration stability
@@ -191,7 +191,7 @@ class ChargeConfig:
             # Attempt hops from more negative charge states to more positive ones
             for j in range(len(self.dbs)):
                 if (self.db_states[j] > self.db_states[i]) \
-                        and (less_than(self._hop_energy_delta(i, j), 0)):
+                        and (self._hop_energy_delta(i, j) < 0):
                     if self.verbose:
                         print(f'Config {self.db_states} charge state '
                                 f'unstable, failed when hopping from site '
@@ -203,7 +203,7 @@ class ChargeConfig:
         '''
         Calculate the V_i of the given ind and store it in self.v_i[ind].
         '''
-        self.v_i[ind] = self.v_ext[ind] + np.dot(self.v_ij[ind][:], self.db_states)
+        self.v_i[ind] = - self.v_ext[ind] - np.dot(self.v_ij[ind][:], self.db_states)
 
     def _hop_energy_delta(self, i, j):
         '''
@@ -212,7 +212,7 @@ class ChargeConfig:
         Returns:
             The energy delta as a float.
         '''
-        return self.v_i[i] - self.v_i[j] - self.v_ij[i][j]
+        return - self.v_i[i] + self.v_i[j] - self.v_ij[i][j]
 
 
 class ExhaustiveGroundStateSearch:
