@@ -26,14 +26,14 @@ interpreter, bin_path, command
     <!-- Selection of invocation commands to call this engine. The first one is the one that is shown in SiQAD by default. TODO tie this to presets in some ways. -->
     <commands>
         <!-- Default command. -->
-        <command label="Default">
+        <command label="Ground State Only">
             <program>@PYTHON@</program>
             <arg>@BINPATH@</arg>
             <arg>@PROBLEMPATH@</arg>
             <arg>@RESULTPATH@</arg>
         </command>
         <!-- Import potentials from PoisSolver. -->
-        <command label="Import Potentials">
+        <command label="Import PoisSolver Potentials">
             <program>@PYTHON@</program>
             <arg>@BINPATH@</arg>
             <arg>@PROBLEMPATH@</arg>
@@ -78,5 +78,15 @@ interpreter, bin_path, command
             <label>Auto-fail DB Count</label>
             <tip>Refuse to run problems with DB count greater than the specified size as a sanity check against running simulations that would take forever.</tip>
         </auto_fail_threshold>
+        <include_states>
+            <T>string</T>
+            <val>ground</val>
+            <label>Include results</label>
+            <tip>Results to include.</tip>
+            <value_selection type="ComboBox">
+              <ground>Ground state only</ground>
+              <valid>All metastable</valid>
+            </value_selection>
+        </include_states>
     </sim_params>
 </physeng>

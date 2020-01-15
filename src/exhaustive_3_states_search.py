@@ -15,7 +15,7 @@ from collections import namedtuple
 import numpy as np
 from scipy.spatial import distance
 import argparse
-import siqadconn
+from siqadtools import siqadconn
 import itertools
 import multiprocessing as mp
 import time
@@ -172,7 +172,9 @@ class ChargeConfig:
                 if self.v_i[i] == -float('inf'):
                     self._calc_v_i(i)
             self.v_i_ready = True
-        return np.inner(self.v_ext, self.db_states) + 0.5 * np.inner(self.db_states, self.v_i)
+        #return np.inner(self.v_ext, self.db_states) + 0.5 * np.inner(self.db_states, self.v_i)
+        return np.inner(self.v_ext, self.db_states) - 0.5 * np.inner(self.db_states, self.v_i)
+        #return np.inner(self.v_ext, self.db_states) + 0.5 * np.inner(self.db_states, np.inner(self.v_ij, self.db_states))
 
     def physically_valid(self):
         '''
@@ -270,6 +272,11 @@ class ExhaustiveGroundStateSearch:
         sq_param = lambda key : self.sqconn.getParameter(key)
         lat_coord_to_eucl = lambda n, m, l: (db_scale * n * self.lat_a, db_scale * (m * self.lat_b + l * self.lat_c))
 
+        if include_states == 'use_input_file':
+            include_all_valid = sq_param('include_states') == 'valid'
+        else:
+            include_all_valid = include_states == 'valid'
+
         manager = mp.Manager()
         managed_elec_configs = manager.list([])
         managed_cpu_time_list = manager.list([])
@@ -307,7 +314,7 @@ class ExhaustiveGroundStateSearch:
             while curr_range[1] <= max_config_id and curr_range[0] != curr_range[1]:
                 th = SearchThreadThreeStates(managed_elec_configs, managed_cpu_time_list, 
                         thread_id, curr_range, self.dbs, self.mu, self.v_ext, self.epsilon_r, 
-                        self.debye_length, use_qubo_obj_func, self.base, self.verbose)
+                        self.debye_length, use_qubo_obj_func, self.base, include_all_valid, self.verbose)
                 p = mp.Process(target=th.run)
                 threads.append(th)
                 processes.append(p)
@@ -324,11 +331,11 @@ class ExhaustiveGroundStateSearch:
             # find the actual ground states among the returned states
             gs_energy = float('inf')
             for elec_config in managed_elec_configs:
-                if less_than(elec_config.energy, gs_energy):
+                if not include_all_valid and less_than(elec_config.energy, gs_energy):
                     self.elec_configs.clear()
                     self.elec_configs.append(elec_config)
                     gs_energy = elec_config.energy
-                elif equal(elec_config.energy, gs_energy):
+                elif include_all_valid or equal(elec_config.energy, gs_energy):
                     self.elec_configs.append(elec_config)
             self.cpu_time = np.sum(managed_cpu_time_list)
         else:
@@ -416,13 +423,14 @@ class SearchThreadThreeStates:
 
     def __init__(self, managed_config_results, managed_time_list, t_id, 
             search_range, dbs, mu, v_ext, epsilon_r, debye_length,
-            use_qubo_obj_func, states, verbose):
+            use_qubo_obj_func, states, include_all_valid, verbose):
         '''search_range is a tuple containing the start and end indices.'''
         self.managed_config_results = managed_config_results
         self.managed_time_list = managed_time_list
         self.thread_id = t_id
         self.dbs = dbs
         self.states = states
+        self.include_all_valid = include_all_valid
         self.verbose = verbose
         self.use_qubo_obj_func = use_qubo_obj_func
 
@@ -435,17 +443,20 @@ class SearchThreadThreeStates:
         all_configs = []
         gs_configs = []
         gs_energy = float('inf')
+        elec_configs = []
 
         has_next = True
         while has_next:
             valid = self.config.physically_valid()
             if valid:
                 energy = self.config.system_energy()
-                if (valid and less_than(energy, gs_energy)):
+                if valid and self.include_all_valid:
+                    elec_configs.append(ElectronConfig(self.config.db_states.copy(), energy, 1))
+                elif valid and less_than(energy, gs_energy):
                     gs_configs.clear()
                     gs_configs.append(self.config.db_states.copy())
                     gs_energy = energy
-                elif (valid and equal(energy, gs_energy)):
+                elif valid and equal(energy, gs_energy):
                     gs_configs.append(self.config.db_states.copy())
 
             has_next = self.config.advance()
@@ -453,7 +464,6 @@ class SearchThreadThreeStates:
         if self.verbose:
             print(f'Found ground states: {gs_configs}')
 
-        elec_configs = []
         for gs_config in gs_configs:
             elec_configs.append(ElectronConfig(gs_config, gs_energy, 1))
         self.managed_config_results.extend(elec_configs)
@@ -480,8 +490,8 @@ def parse_cml_args():
             default='all', const='all', nargs='?', 
             choices=['population_only', 'all'],
             help='Indicate which stability checks to perform.')
-    parser.add_argument('--include-states', dest='include_states', default='ground',
-            const='ground', nargs='?', choices=['ground', 'valid', 'all'],
+    parser.add_argument('--include-states', dest='include_states', default='use_input_file',
+            const='ground', nargs='?', choices=['use_input_file', 'ground', 'valid'],
             help='Indicate which states to include - ground for only the ground '
             'state, valid for all the valid states, all for everything.')
     parser.add_argument('--check-config', action='store_true', 
