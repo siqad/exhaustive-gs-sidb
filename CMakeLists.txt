@@ -13,7 +13,7 @@ ENDIF()
 set(EGS_FILES
     LICENSE
     exhaustive_gs.physeng
-    src/exhaustive_3_states_search.py
+    src/exhaustive_gs.py
 )
 
 install(FILES ${EGS_FILES} DESTINATION ${EGS_INSTALL_DIR})

@@ -16,13 +16,13 @@ interpreter, bin_path, command
 
 <physeng>
     <name>ExhaustiveGS</name>
-    <version>0.1</version>
+    <version>0.2</version>
     <description>Exhaustively search for the ground state electron configuration.</description>
     <!-- Services this plugin provides, used by SimManager and DesignAssistant classes to identify the type of simulation or assistance this plugin can provide. Comma separated, spaces are neither ignored nor truncated. -->
     <services>ElectronGroundState</services>
     <!-- Path to the engine script or compiled binary. -->
     <!--<bin_path>@PHYSENGPATH@/simanneal</bin_path> TODO switch to this form later-->
-    <bin_path>exhaustive_3_states_search.py</bin_path> <!-- path to binary or script, relative to the folder containing engine_description.xml -->
+    <bin_path>exhaustive_gs.py</bin_path> <!-- path to binary or script, relative to the folder containing engine_description.xml -->
     <!-- Selection of invocation commands to call this engine. The first one is the one that is shown in SiQAD by default. TODO tie this to presets in some ways. -->
     <commands>
         <!-- Default command. -->
@@ -74,19 +74,20 @@ interpreter, bin_path, command
         </debye_length>
         <auto_fail_threshold>
             <T>int</T>
-            <val>30</val>
-            <label>Auto-fail DB Count</label>
-            <tip>Refuse to run problems with DB count greater than the specified size as a sanity check against running simulations that would take forever.</tip>
+            <val>15</val>
+            <label>Auto-fail DB count (read hover tip)</label>
+            <tip>Refuse to run problems with DB count greater than the specified size as a sanity check against running simulations that would take forever. Increase this number at your will, but keep in mind that the 3-state search problem space is 3^N where N is the DB count.</tip>
         </auto_fail_threshold>
-        <include_states>
+        <result_scope>
             <T>string</T>
             <val>ground</val>
-            <label>Include results</label>
-            <tip>Results to include.</tip>
+            <label>Result scope</label>
+            <tip>Types of results to include.</tip>
             <value_selection type="ComboBox">
               <ground>Ground state only</ground>
               <valid>All metastable</valid>
+              <all>All results</all>
             </value_selection>
-        </include_states>
+        </result_scope>
     </sim_params>
 </physeng>

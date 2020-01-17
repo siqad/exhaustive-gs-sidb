@@ -1,0 +1,4 @@
+siqadtools
+numpy
+scipy
+lxml
