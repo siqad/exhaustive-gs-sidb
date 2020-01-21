@@ -151,12 +151,12 @@ class ExhaustiveGroundStateSearcher:
         gs_energy = float('inf')
         for charge_config in managed_result_configs:
             print(f'Config: {charge_config.config}, E: {charge_config.energy}')
-            if result_scope == 'ground' and charge_config.energy < gs_energy:
+            if result_scope != 'ground' or equal(charge_config.energy, gs_energy):
+                self.result_configs.append(charge_config)
+            elif result_scope == 'ground' and charge_config.energy < gs_energy:
                 self.result_configs.clear()
                 self.result_configs.append(charge_config)
                 gs_energy = charge_config.energy
-            elif result_scope != 'ground' or equal(charge_config.energy, gs_energy):
-                self.result_configs.append(charge_config)
         #self.cpu_time = np.sum(managed_cpu_time_list)
 
         return self.result_configs
