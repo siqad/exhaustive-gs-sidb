@@ -17,3 +17,7 @@ set(EGS_FILES
 )
 
 install(FILES ${EGS_FILES} DESTINATION ${EGS_INSTALL_DIR})
+
+if(COMMAND symlink_siqadtools AND NOT WIN32)
+    symlink_siqadtools(${EGS_INSTALL_DIR})
+endif()
