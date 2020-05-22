@@ -16,7 +16,7 @@ interpreter, bin_path, command
 
 <physeng>
     <name>ExhaustiveGS</name>
-    <version>0.2</version>
+    <version>0.2.1</version>
     <description>Exhaustively search for the ground state electron configuration.</description>
     <!-- Services this plugin provides, used by SimManager and DesignAssistant classes to identify the type of simulation or assistance this plugin can provide. Comma separated, spaces are neither ignored nor truncated. -->
     <services>ElectronGroundState</services>
