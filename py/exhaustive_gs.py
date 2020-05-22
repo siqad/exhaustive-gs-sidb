@@ -81,15 +81,16 @@ class ExhaustiveGroundStateSearcher:
         self.runc.verbose = verbose
 
         # precalculations
+        debye *= 1e-9
         K_c = 1./(4 * np.pi * epsilon_r * self.pc.eps0)
         lat_coord_to_eucl = lambda n, m, l: (n*self.lv.a, m*self.lv.b + l*self.lv.c)
-        dbs_eucl = np.asarray([lat_coord_to_eucl(db[0], db[1], db[2]) for db in dbs])
+        dbs_eucl = np.asarray([lat_coord_to_eucl(*db) for db in dbs])
         db_r = distance.cdist(dbs_eucl, dbs_eucl, 'euclidean')
         self.neighbor_rank = np.delete(np.argsort(db_r), 0, 1) # first column is always self index
         self.phys.v_ij = np.divide(self.pc.q0 * K_c * np.exp(-db_r/debye), 
                 db_r, out=np.zeros_like(db_r), where=db_r!=0)
         if self.runc.verbose:
-            print('v_ij=\n{}'.format(self.v_ij))
+            print(f'v_ij=\n{self.phys.v_ij}')
 
     def ground_state_search(self, base=3, num_threads=-1, result_scope='ground'):
         '''
@@ -150,7 +151,8 @@ class ExhaustiveGroundStateSearcher:
         # find the actual ground states among the returned states
         gs_energy = float('inf')
         for charge_config in managed_result_configs:
-            print(f'Config: {charge_config.config}, E: {charge_config.energy}')
+            if self.runc.verbose:
+                print(f'Config: {charge_config.config}, E: {charge_config.energy}')
             if result_scope != 'ground' or equal(charge_config.energy, gs_energy):
                 self.result_configs.append(charge_config)
             elif result_scope == 'ground' and charge_config.energy < gs_energy:
@@ -211,7 +213,6 @@ class _SearchThread:
 
     def run(self):
         time_start = time.process_time()
-        all_configs = []
         gs_configs = []
         gs_energy = float('inf')
         result_configs = []
@@ -219,15 +220,17 @@ class _SearchThread:
         has_next = True
         while has_next:
             valid = self.config_iter.physically_valid()
-            energy = self.config_iter.system_energy()
             if self.result_scope == 'all' or (valid and self.result_scope == 'valid'):
+                energy = self.config_iter.system_energy()
                 result_configs.append(ChargeConfig(self.config_iter.n.copy(), energy, int(valid)))
-            elif valid and less_than(energy, gs_energy):
-                gs_configs.clear()
-                gs_configs.append(self.config_iter.n.copy())
-                gs_energy = energy
-            elif valid and equal(energy, gs_energy):
-                gs_configs.append(self.config_iter.n.copy())
+            elif valid:
+                energy = self.config_iter.system_energy()
+                if less_than(energy, gs_energy):
+                    gs_configs.clear()
+                    gs_configs.append(self.config_iter.n.copy())
+                    gs_energy = energy
+                elif equal(energy, gs_energy):
+                    gs_configs.append(self.config_iter.n.copy())
             has_next = self.config_iter.advance()
 
         if self.verbose:
@@ -345,7 +348,7 @@ class _ChargeConfigIter:
                     self._calc_v_i(i)
             self.v_i_ready = True
         #return np.inner(self.v_ext, self.n) + 0.5 * np.inner(self.n, self.v_i)
-        return np.inner(self.phys.v_ext, self.n) - 0.5 * np.inner(self.n, self.v_i)
+        return 0.5 * np.inner(self.phys.v_ext, self.n) - 0.5 * np.inner(self.n, self.v_i)
         #return np.inner(self.v_ext, self.n) + 0.5 * np.inner(self.n, np.inner(self.v_ij, self.n))
 
     def physically_valid(self):
@@ -367,7 +370,7 @@ class _ChargeConfigIter:
             if not valid:
                 if self.verbose:
                     print(f'Config {self.n} population unstable, failed at '
-                            f'index {i} with v_i={self.phys.v_i[i]}, '
+                            f'index {i} with v_i={self.v_i[i]}, '
                             f'muzm={self.phys.muzm}, mupz={self.phys.mupz}')
                 return False
         self.v_i_ready = True
@@ -428,13 +431,13 @@ def _siqad_handler(cml_args):
     # define and retrieve constants
     base = 3 if not cml_args.two_state else 2
     muzm = float(sq_param('global_v0'))
-    debye_length = float(sq_param('debye_length')) * 1e-9
+    debye_length = float(sq_param('debye_length'))
     epsilon_r = float(sq_param('epsilon_r'))
 
     v_ext = np.zeros(len(dbs))
     if cml_args.ext_pots_file != None:
         import json
-        with open(self.ext_pots_file, 'r') as f:
+        with open(cml_args.ext_pots_file, 'r') as f:
             v_ext_load = json.load(f)
             v_ext = v_ext_load['pots'][0]
 

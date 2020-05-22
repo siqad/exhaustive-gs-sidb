@@ -22,29 +22,24 @@ interpreter, bin_path, command
     <services>ElectronGroundState</services>
     <!-- Path to the engine script or compiled binary. -->
     <!--<bin_path>@PHYSENGPATH@/simanneal</bin_path> TODO switch to this form later-->
-    <bin_path>exhaustive_gs</bin_path> <!-- path to binary or script, relative to the folder containing engine_description.xml -->
+    <bin_path>exhaustive_gs.py</bin_path> <!-- path to binary or script, relative to the folder containing engine_description.xml -->
     <!-- Selection of invocation commands to call this engine. The first one is the one that is shown in SiQAD by default. TODO tie this to presets in some ways. -->
     <commands>
         <!-- Default command. -->
         <command label="Ground State Only">
-            <program>@BINPATH@</program>
+            <program>@PYTHON@</program>
+            <arg>@BINPATH@</arg>
             <arg>@PROBLEMPATH@</arg>
             <arg>@RESULTPATH@</arg>
         </command>
         <!-- Import potentials from PoisSolver. -->
         <command label="Import PoisSolver Potentials">
-            <program>@BINPATH@</program>
+            <program>@PYTHON@</program>
+            <arg>@BINPATH@</arg>
             <arg>@PROBLEMPATH@</arg>
             <arg>@RESULTPATH@</arg>
             <arg>--ext-pots-file</arg>
             <arg>@JOBTMP@/db_pots.json</arg>
-        </command>
-        <!-- Import potentials from PoisSolver. -->
-        <command label="QUBO Mapping (no metastability check)">
-            <program>@BINPATH@</program>
-            <arg>@PROBLEMPATH@</arg>
-            <arg>@RESULTPATH@</arg>
-            <arg>--qubo</arg>
         </command>
     </commands>
     <!-- Python dependencies file path, relative to the directory containing this physeng file. -->
@@ -57,48 +52,42 @@ interpreter, bin_path, command
             <label>Thread count</label>
             <tip>The number of concurrent threads to use. If left at -1, all available CPU cores are used.</tip>
         </num_threads>
-        <muzm>
-            <T>float</T>
-            <val>-0.25</val>
-            <dp>2</dp>
-            <label>mu (0/- transition level - Fermi level)</label>
-            <tip>The global Fermi level on the surface, higher value brings more electrons to the surface.</tip>
-        </muzm>
-        <eps_r>
+        <epsilon_r>
             <T>float</T>
             <val>5.6</val>
             <dp>2</dp>
             <label>Relative permittivity</label>
             <tip>Surface relative permittivity. Original default was 6.35, changed to 5.6 after Huff's fitting in the paper Binary Atomic Silicon Logic on Nature Electronics.</tip>
-        </eps_r>
-        <debye>
+        </epsilon_r>
+        <global_v0>
+            <T>float</T>
+            <val>-0.25</val>
+            <dp>2</dp>
+            <label>mu (0/- transition level - Fermi level)</label>
+            <tip>The global Fermi level on the surface, higher value brings more electrons to the surface.</tip>
+        </global_v0>
+        <debye_length>
             <T>float</T>
             <val>5</val>
             <label>Debye length (nm)</label>
             <tip>Debye length for screening.</tip>
-        </debye>
-        <base>
-            <T>int</T>
-            <val>3</val>
-            <label>State count</label>
-            <tip>Specify 2- or 3-state simulation.</tip>
-        </base>
-        <!--<auto_fail_threshold>
+        </debye_length>
+        <auto_fail_threshold>
             <T>int</T>
             <val>15</val>
             <label>Auto-fail DB count (read hover tip)</label>
             <tip>Refuse to run problems with DB count greater than the specified size as a sanity check against running simulations that would take forever. Increase this number at your will, but keep in mind that the 3-state search problem space is 3^N where N is the DB count.</tip>
-        </auto_fail_threshold>-->
-        <scope>
+        </auto_fail_threshold>
+        <result_scope>
             <T>string</T>
             <val>ground</val>
             <label>Result scope</label>
             <tip>Types of results to include.</tip>
             <value_selection type="ComboBox">
-              <ground>Ground states only</ground>
+              <ground>Ground state only</ground>
               <valid>All metastable</valid>
               <all>All results</all>
             </value_selection>
-        </scope>
+        </result_scope>
     </sim_params>
 </physeng>
