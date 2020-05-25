@@ -70,6 +70,11 @@ int main(int argc, char *argv[])
   log.echo() << "\n*** Read Simulation parameters ***" << std::endl;
   SimParams sparams = interface.loadSimParams(qubo);
 
+  if (sparams.n_dbs > sparams.autofail) {
+    log.warning() << "Problem size > autofail threshold, exiting." << std::endl;
+    return 1;
+  }
+
   log.echo() << "\n*** Invoke simulation ***" << std::endl;
   interface.invoke(sparams);
 

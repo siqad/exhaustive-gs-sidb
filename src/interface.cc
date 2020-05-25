@@ -92,9 +92,11 @@ SimParams EGSInterface::loadSimParams(bool qubo)
     }
   }
 
+
   // VAIRABLE INITIALIZATION
   log.debug() << "Retrieving variables from SiQADConn..." << std::endl;
 
+  sp.autofail = std::stoi(sqparam("autofail"));
   sp.num_threads = std::stoi(sqparam("num_threads"));
   sp.base = qubo ? 2 : std::stoi(sqparam("base"));
   if (sqparam("scope") == "ground") {

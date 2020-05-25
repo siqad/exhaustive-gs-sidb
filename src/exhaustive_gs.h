@@ -93,6 +93,7 @@ namespace egs {
     bool qubo;            // true for qubo mapping, false for normal gs model
     int num_threads=-1;
     int base=3;           // 3-state or 2-state search
+    int autofail=16;      // autofail DB count
     ResultScope scope=GroundStates;
 
     std::vector<DBLocEucl> db_locs; // List of DB locations

@@ -100,5 +100,11 @@ interpreter, bin_path, command
               <all>All results</all>
             </value_selection>
         </scope>
+        <autofail>
+            <T>int</T>
+            <val>16</val>
+            <label>Autofail problem size</label>
+            <tip>Problems with greater than this number of DBs will fail automatically to prevent accidental invocation of prohibitively long simulation. Increase at your own risk.</tip>
+        </autofail>
     </sim_params>
 </physeng>
