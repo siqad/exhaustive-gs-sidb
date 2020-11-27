@@ -62,13 +62,13 @@ namespace std {
 
 %extend egs::SimParams {
     
-    void phys::SimParams::pySetVExt(std::vector<float> s_vec) {
-        boost::numeric::ublas::vector<float> u_vec(s_vec.size());
+    void egs::SimParams::pySetVExt(std::vector<float> s_vec) {
+        egs::FPVec u_vec(s_vec.size());
         for (unsigned int i=0; i<s_vec.size(); i++)
             u_vec[i] = s_vec[i];
         $self->v_ext = u_vec;
     }
-    
+
     %pythoncode{
         def set_db_locs(self, db_locs):
             if len(db_locs[0]) == 3:
@@ -85,9 +85,31 @@ namespace std {
         def set_param(self, pname, pval):
             try:
                 self.__swig_setmethods__[pname](self, pval)
+            except AttributeError:
+                if pname == 'qubo':
+                    self.qubo = pval
+                elif pname == 'num_threads':
+                    self.num_threads = pval
+                elif pname == 'base':
+                    self.base = pval
+                elif pname == 'autofail':
+                    self.autofail = pval
+                elif pname == 'muzm':
+                    self.muzm = pval
+                elif pname == 'eps_r':
+                    self.eps_r = pval
+                elif pname == 'debye':
+                    self.debye = pval
+                elif pname == 'v_ext':
+                    self.set_v_ext(pval)
+                else:
+                    raise NotImplementedError(f'Provided parameter name {pname} has not been implemented in the EGS python wrapper.')
             except KeyError:
                 print(f'set_param error: {pname} is not a valid SimParams parameter.')
                 raise
+
+        def print_phys_params(self):
+            print(f'muzm: {self.muzm}; eps_r: {self.eps_r}; debye: {self.debye}')
     }
 }
 

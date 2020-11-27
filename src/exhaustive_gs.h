@@ -90,7 +90,7 @@ namespace egs {
 
 
     // VARIABLES
-    bool qubo;            // true for qubo mapping, false for normal gs model
+    bool qubo=false;      // true for qubo mapping, false for normal gs model
     int num_threads=-1;
     int base=3;           // 3-state or 2-state search
     int autofail=16;      // autofail DB count

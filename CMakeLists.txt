@@ -52,6 +52,7 @@ if(SKBUILD)
 
     set_property(SOURCE swig/exhaustive_gs.i PROPERTY CPLUSPLUS ON)
     file(COPY swig/__init__.py DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/swig")
+    file(COPY swig/wrapper_validation.py DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/swig")
 
     swig_add_library(exhaustive_gs LANGUAGE python SOURCES swig/exhaustive_gs.i src/exhaustive_gs.cc)
 
@@ -61,6 +62,7 @@ if(SKBUILD)
             DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/../cmake-install/pyegs)
     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/exhaustive_gs.py
                   ${CMAKE_CURRENT_BINARY_DIR}/swig/__init__.py
+                  ${CMAKE_CURRENT_BINARY_DIR}/swig/wrapper_validation.py
             DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/../cmake-install/pyegs)
 
 else()
