@@ -4,7 +4,7 @@ from skbuild import setup
 
 setup (
         name    = 'pyegs',
-        version = '0.2',
+        version = '0.2.2',
         cmake_with_sdist = True,
         packages = ['pyegs'],
         zip_safe = False

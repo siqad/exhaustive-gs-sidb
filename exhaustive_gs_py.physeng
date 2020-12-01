@@ -16,7 +16,7 @@ interpreter, bin_path, command
 
 <physeng>
     <name>ExhaustiveGS</name>
-    <version>0.2</version>
+    <version>0.2.2</version>
     <description>Exhaustively search for the ground state electron configuration.</description>
     <!-- Services this plugin provides, used by SimManager and DesignAssistant classes to identify the type of simulation or assistance this plugin can provide. Comma separated, spaces are neither ignored nor truncated. -->
     <services>ElectronGroundState</services>
@@ -52,33 +52,33 @@ interpreter, bin_path, command
             <label>Thread count</label>
             <tip>The number of concurrent threads to use. If left at -1, all available CPU cores are used.</tip>
         </num_threads>
-        <epsilon_r>
+        <eps_r>
             <T>float</T>
             <val>5.6</val>
             <dp>2</dp>
             <label>Relative permittivity</label>
             <tip>Surface relative permittivity. Original default was 6.35, changed to 5.6 after Huff's fitting in the paper Binary Atomic Silicon Logic on Nature Electronics.</tip>
-        </epsilon_r>
-        <global_v0>
+        </eps_r>
+        <muzm>
             <T>float</T>
             <val>-0.25</val>
             <dp>2</dp>
             <label>mu (0/- transition level - Fermi level)</label>
             <tip>The global Fermi level on the surface, higher value brings more electrons to the surface.</tip>
-        </global_v0>
-        <debye_length>
+        </muzm>
+        <debye>
             <T>float</T>
             <val>5</val>
             <label>Debye length (nm)</label>
             <tip>Debye length for screening.</tip>
-        </debye_length>
-        <auto_fail_threshold>
+        </debye>
+        <autofail>
             <T>int</T>
             <val>15</val>
             <label>Auto-fail DB count (read hover tip)</label>
             <tip>Refuse to run problems with DB count greater than the specified size as a sanity check against running simulations that would take forever. Increase this number at your will, but keep in mind that the 3-state search problem space is 3^N where N is the DB count.</tip>
-        </auto_fail_threshold>
-        <result_scope>
+        </autofail>
+        <scope>
             <T>string</T>
             <val>ground</val>
             <label>Result scope</label>
@@ -88,6 +88,6 @@ interpreter, bin_path, command
               <valid>All metastable</valid>
               <all>All results</all>
             </value_selection>
-        </result_scope>
+        </scope>
     </sim_params>
 </physeng>

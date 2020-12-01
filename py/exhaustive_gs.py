@@ -422,17 +422,17 @@ def _siqad_handler(cml_args):
 
     # check auto_fail threshold and prevent simulation from running if threshold
     # is passed.
-    auto_fail_thresh = int(sq_param('auto_fail_threshold'))
-    if len(dbs) > int(sq_param('auto_fail_threshold')):
+    auto_fail_thresh = int(sq_param('autofail'))
+    if len(dbs) > int(sq_param('autofail')):
         raise ValueError(f'DB count {len(dbs)} has exceeded the auto fail '
                 f'threshold, {auto_fail_thresh}. Please raise the threshold '
                 'if you are sure that you want to perform this simulation.')
 
     # define and retrieve constants
     base = 3 if not cml_args.two_state else 2
-    muzm = float(sq_param('global_v0'))
-    debye_length = float(sq_param('debye_length'))
-    epsilon_r = float(sq_param('epsilon_r'))
+    muzm = float(sq_param('muzm'))
+    debye_length = float(sq_param('debye'))
+    epsilon_r = float(sq_param('eps_r'))
 
     v_ext = np.zeros(len(dbs))
     if cml_args.ext_pots_file != None:
@@ -446,7 +446,7 @@ def _siqad_handler(cml_args):
     if cml_args.num_threads != None:
         num_threads = cml_args.num_threads
 
-    result_scope = sq_param('result_scope')
+    result_scope = sq_param('scope')
     if cml_args.result_scope and cml_args.result_scope != 'use_input_file':
         result_scope = cml_args.result_scope
 
