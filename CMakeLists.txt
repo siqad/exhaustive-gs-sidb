@@ -56,7 +56,7 @@ if(SKBUILD)
 
     swig_add_library(exhaustive_gs LANGUAGE python SOURCES swig/exhaustive_gs.i src/exhaustive_gs.cc)
 
-    swig_link_libraries(exhaustive_gs ${Boost_LIBRARIES})
+    swig_link_libraries(exhaustive_gs ${Boost_LIBRARIES} ${PYTHON_LIBRARY})
 
     install(TARGETS ${SWIG_MODULE_exhaustive_gs_REAL_NAME}
             DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/../cmake-install/pyegs)
